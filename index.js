@@ -4,12 +4,14 @@ var _from = require('babel-runtime/core-js/array/from');
 
 var _from2 = _interopRequireDefault(_from);
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _interopRequireDefault(obj) {
+  return obj && obj.__esModule ? obj : { default: obj };
+}
 
 var moveTo = function moveTo(list, fromIndex, toIndex) {
   var arr = [];
-  toIndex = ~ ~toIndex;
-  fromIndex = ~ ~fromIndex;
+  toIndex = ~~toIndex;
+  fromIndex = ~~fromIndex;
   if (toIndex >= fromIndex) {
     arr = arr.concat(list.slice(0, fromIndex)).concat(list.slice(fromIndex + 1, toIndex + 1)).concat(list.slice(fromIndex, fromIndex + 1)).concat(list.slice(toIndex + 1));
   } else {
@@ -19,7 +21,10 @@ var moveTo = function moveTo(list, fromIndex, toIndex) {
 };
 
 var confirmTarget = function confirmTarget(target) {
-  return target.nodeName === 'TD' ? target.parentElement : target;
+  while(target.nodeName !== 'TR' && target.nodeName !== 'UL') {
+    target = target.parentElement;
+  }
+  return target;
 };
 
 var workWithClass = function workWithClass(element, newClass, defaultClassName, doWhat) {
@@ -35,40 +40,44 @@ var workWithClass = function workWithClass(element, newClass, defaultClassName, 
 
 exports.install = function (Vue) {
   Vue.directive('dragable', {
-    params: ['drag-class'],
-    bind: function bind() {
+    bind: function bind(el, binding, vnode) {
       var self = this;
-      var element = this.el;
+      var element = el;
+      var node = vnode;
       element.draggable = true;
       element.ondragstart = function (event) {
-        workWithClass(element, self.params['dragClass'], 'yita-draging', 'add');
-        event.dataTransfer.setData('text', self._scope['$index']);
+        workWithClass(element, binding.value['dragClass'], 'yita-draging', 'add');
+        event.dataTransfer.setData('text', event.target.rowIndex - 1);
+        console.log(`dragging row ${event.target.rowIndex - 1}`);
       };
       element.ondragend = function (event) {
-        workWithClass(element, self.params['dragClass'], 'yita-draging', 'remove');
+        workWithClass(element, binding.value['dragClass'], 'yita-draging', 'remove');
       };
-      element.ondrag = function (event) {};
+      element.ondrag = function (event) {
+      };
     },
-    update: function update(newValue, oldValue) {},
-    unbind: function unbind() {}
+    update: function update(newValue, oldValue) {
+    },
+    unbind: function unbind() {
+    }
   });
   Vue.directive('droper', {
-    params: ['drag-class'],
-    twoWay: true,
-    bind: function bind() {
+    bind: function bind(el, binding, vnode) {
       var self = this;
-      var expr = this.expression;
-      var element = this.el;
+      var list = binding.value.list;
+      var element = el;
+      var node = vnode;
+      var emit = binding.def.emit;
       element.ondragenter = function (event) {
         var target = event.target;
         target = confirmTarget(target);
         // let index = Array.from(this.children).indexOf(target)
-        workWithClass(target, self.params['dragClass'], 'yita-draging-zone', 'add');
+        workWithClass(target, vnode.data.attrs['dragClass'], 'yita-draging-zone', 'add');
       };
       element.ondragleave = function (event) {
         var target = event.target;
         target = confirmTarget(target);
-        workWithClass(target, self.params['dragClass'], 'yita-draging-zone', 'remove');
+        workWithClass(target, vnode.data.attrs['dragClass'], 'yita-draging-zone', 'remove');
       };
       element.ondragover = function (event) {
         event.preventDefault();
@@ -76,20 +85,29 @@ exports.install = function (Vue) {
       element.ondrop = function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var fromIndex = event.dataTransfer.getData('text');
+        var fromIndex = parseInt(event.dataTransfer.getData('text'), 10);
         var target = event.target;
         target = confirmTarget(target);
-        workWithClass(target, self.params['dragClass'], 'yita-draging-zone', 'remove');
+        workWithClass(target, vnode.data.attrs['dragClass'], 'yita-draging-zone', 'remove');
         var toIndex = (0, _from2.default)(this.children).indexOf(target);
-        if (toIndex === -1) {
-          console.warn('cannot found', target, 'in ', this);
+        if (toIndex !== -1) {
+          var out = moveTo(list, fromIndex, toIndex);
+          emit(node, 'itemOrderChanged', { fromIndex: fromIndex, toIndex: toIndex });
         }
-        var out = moveTo(self.vm[expr], fromIndex, toIndex);
-        self.vm.$set(expr, out);
       };
     },
-    update: function update(value, oldValue) {},
-    unbind: function unbind() {}
+    update: function update(value, oldValue) {
+    },
+    unbind: function unbind() {
+    },
+    emit: function (vnode, name, data) {
+      var handlers = (vnode.data && vnode.data.on) ||
+        (vnode.componentOptions && vnode.componentOptions.listeners);
+
+      if (handlers && handlers[name]) {
+        handlers[name].fns(data);
+      }
+    }
   });
 };
 
