@@ -21,7 +21,7 @@ var moveTo = function moveTo(list, fromIndex, toIndex) {
 };
 
 var confirmTarget = function confirmTarget(target) {
-  while(target.nodeName !== 'TR' && target.nodeName !== 'UL') {
+  while(target.nodeName !== 'TR' && target.nodeName !== 'LI') {
     target = target.parentElement;
   }
   return target;
