@@ -47,7 +47,11 @@ exports.install = function (Vue) {
       element.draggable = true;
       element.ondragstart = function (event) {
         workWithClass(element, binding.value['dragClass'], 'yita-draging', 'add');
-        event.dataTransfer.setData('text', event.target.rowIndex - 1);
+        if(event.target.rowIndex != null) {
+          event.dataTransfer.setData('text', event.target.rowIndex - 1);
+        } else {
+          event.dataTransfer.setData('text', [].slice.call(event.target.parentElement.children).indexOf(event.target));
+        }
         console.log(`dragging row ${event.target.rowIndex - 1}`);
       };
       element.ondragend = function (event) {
